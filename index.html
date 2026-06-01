@@ -755,35 +755,35 @@
 
     async function loadGasPrices() {
       try {
+        // 1. Fetch the local JSON file
         const response = await fetch('./gas_prices.json');
-        console.log(response)
+        if (!response.ok) throw new Error("Could not find gas_prices.json");
+
         const raw = await response.json();
 
-        // Strip last_updated and any non-numeric keys so they never pollute price lookups
-        STATE_GAS_PRICES = {};
-        for (const fuelType of Object.keys(raw)) {
-          STATE_GAS_PRICES[fuelType] = {};
-          for (const [key, val] of Object.entries(raw[fuelType])) {
-            if (typeof val !== 'number') continue;
-            STATE_GAS_PRICES[fuelType][key] = val;
-          }
-        }
+        // 2. Directly assign the object so all fuel types and 50 states load seamlessly
+        STATE_GAS_PRICES = raw;
 
+        // 3. Mark as ready so the calculate() function can run immediately
         gasPricesReady = true;
 
+        // 4. Safely pull out the text date from the nested regular object
         if (raw.regular && raw.regular.last_updated) {
           document.getElementById('gas-note').innerHTML =
-            `Prices last updated: <b>${raw.regular.last_updated}</b>. Source: EIA / AAA`;
+            `Prices last updated on: <b>${raw.regular.last_updated}</b>. Source: AAA Gas Prices`;
         }
       } catch (error) {
-        console.error("Could not load gas prices, using defaults.", error);
+        console.error("Could not read local gas_prices.json, applying local safe fallbacks.", error);
+
+        // Fallback block if the file fails to fetch or parse
         STATE_GAS_PRICES = {
-          regular:  { DEFAULT: 3.50 },
+          regular: { DEFAULT: 3.50, TX: 3.04, NM: 3.15, AZ: 3.28, CA: 4.52 },
           midgrade: { DEFAULT: 3.80 },
-          premium:  { DEFAULT: 4.10 },
-          diesel:   { DEFAULT: 3.90 }
+          premium: { DEFAULT: 4.10 },
+          diesel: { DEFAULT: 3.90 }
         };
         gasPricesReady = true;
+        document.getElementById('gas-note').innerHTML = "Using baseline fuel estimates.";
       }
     }
 
