@@ -756,6 +756,7 @@
     async function loadGasPrices() {
       try {
         const response = await fetch('./gas_prices.json');
+        console.log(response)
         const raw = await response.json();
 
         // Strip last_updated and any non-numeric keys so they never pollute price lookups
