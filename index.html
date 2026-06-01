@@ -809,12 +809,26 @@ document.addEventListener('click', e => {
 // ROUTING (OpenRouteService)
 // =============================================
 async function getRoute(originCoord, destCoord) {
-  const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_KEY}&start=${originCoord.lon},${originCoord.lat}&end=${destCoord.lon},${destCoord.lat}`;
+  // Using the public OSRM demo server (No API key required)
+  const url = `https://router.project-osrm.org/route/v1/driving/${originCoord.lon},${originCoord.lat};${destCoord.lon},${destCoord.lat}?overview=full&geometries=geojson`;
+  
   const r = await fetch(url);
   if (!r.ok) throw new Error('Routing service unavailable. Please try again.');
+  
   const d = await r.json();
-  if (!d.features || !d.features.length) throw new Error('No route found between these locations.');
-  return d.features[0];
+  if (!d.routes || !d.routes.length) throw new Error('No route found between these locations.');
+  
+  // OSRM structure is slightly different, we normalize it for your existing code
+  return {
+    type: "Feature",
+    geometry: d.routes[0].geometry,
+    properties: {
+      summary: {
+        distance: d.routes[0].distance, // in meters
+        duration: d.routes[0].duration  // in seconds
+      }
+    }
+  };
 }
 
 // =============================================
