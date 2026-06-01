@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FuelRoute — Road Trip Gas Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root {
+    --bg: #0c0f0a;
+    --bg2: #131610;
+    --bg3: #1a1e15;
+    --border: rgba(180,210,100,0.12);
+    --accent: #b4d264;
+    --accent2: #7eb83a;
+    --muted: #6b7a55;
+    --text: #e8f0d0;
+    --text2: #a8b890;
+    --danger: #e87040;
+    --card: #161a12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text2); font-weight: 400; }
+  .tagline {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* LAYOUT */
+  .app {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    height: calc(100vh - 56px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent2);
+  }
+  select option { background: #1a1e15; }
+
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group { margin-bottom: 10px; }
+  .form-group:last-child { margin-bottom: 0; }
+
+  .toggle-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .toggle-btn {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 7px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn.active {
+    background: rgba(180,210,100,0.12);
+    border-color: var(--accent2);
+    color: var(--accent);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #0c0f0a;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary:hover { background: #cce87a; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* RESULTS */
+  .results { display: none; flex-direction: column; gap: 1rem; }
+  .results.show { display: flex; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+  }
+  .stat-box.highlight {
+    background: rgba(180,210,100,0.08);
+    border-color: rgba(180,210,100,0.3);
+  }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-value.normal { color: var(--text); font-size: 18px; }
+  .stat-sub { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+  /* STATE BREAKDOWN */
+  .breakdown-list { display: flex; flex-direction: column; gap: 6px; }
+  .breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg3);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .state-flag {
+    width: 28px;
+    height: 20px;
+    border-radius: 3px;
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    font-weight: 500;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .state-info { flex: 1; }
+  .state-name { font-weight: 500; color: var(--text); font-size: 13px; }
+  .state-details { font-size: 11px; color: var(--text2); }
+  .state-cost {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--accent2);
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+
+  /* MAP */
+  .map-pane { position: relative; }
+  #map {
+    height: 100%;
+    width: 100%;
+    background: var(--bg2);
+  }
+  .map-overlay {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: rgba(12,15,10,0.92);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    display: none;
+    min-width: 200px;
+  }
+  .map-overlay.show { display: block; }
+  .map-overlay-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .map-stat-row { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+  .map-stat-row span:first-child { color: var(--muted); }
+  .map-stat-row span:last-child { font-family: 'DM Mono', monospace; color: var(--text); }
+
+  /* LOADER */
+  .loader {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    color: var(--text2);
+    font-size: 13px;
+  }
+  .loader.show { display: flex; }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ERROR */
+  .error-msg {
+    display: none;
+    background: rgba(232,112,64,0.1);
+    border: 1px solid rgba(232,112,64,0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--danger);
+  }
+  .error-msg.show { display: block; }
+
+  /* GAS PRICE NOTE */
+  .gas-note {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 8px 10px;
+    background: var(--bg3);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent2);
+    line-height: 1.5;
+  }
+
+  /* AUTOCOMPLETE */
+  .autocomplete-wrapper { position: relative; }
+  .suggestions-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #1e2418;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    z-index: 200;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  .suggestions-list.show { display: block; }
+  .suggestion-item {
+    padding: 9px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover, .suggestion-item.active { background: rgba(180,210,100,0.08); color: var(--text); }
+
+  /* LEAFLET CUSTOM */
+  .leaflet-container { background: #0c0f0a !important; }
+  .custom-popup .leaflet-popup-content-wrapper {
+    background: #161a12;
+    border: 1px solid rgba(180,210,100,0.2);
+    color: #e8f0d0;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+  .custom-popup .leaflet-popup-tip { background: #161a12; }
+  .popup-content { font-family: 'DM Sans', sans-serif; font-size: 13px; }
+  .popup-title { font-family: 'Syne', sans-serif; font-weight: 700; color: #b4d264; margin-bottom: 4px; }
+
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto 350px; height: auto; }
+    .sidebar { height: auto; }
+    .map-pane { height: 350px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Fuel<span>Route</span></div>
+  <div class="tagline">road trip gas estimator</div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- ROUTE CARD -->
+    <div class="card">
+      <div class="section-label">Route</div>
+      <div class="form-group autocomplete-wrapper" style="position:relative;">
+        <label>Origin</label>
+        <input type="text" id="origin" placeholder="e.g. Dallas, TX" autocomplete="off"/>
+        <div class="suggestions-list" id="origin-suggestions"></div>
+      </div>
+      <div class="form-group autocomplete-wrapper" style="position:relative;">
+        <label>Destination</label>
+        <input type="text" id="destination" placeholder="e.g. Sunnyvale, CA" autocomplete="off"/>
+        <div class="suggestions-list" id="dest-suggestions"></div>
+      </div>
+    </div>
+
+    <!-- VEHICLE CARD -->
+    <div class="card">
+      <div class="section-label">Vehicle</div>
+      <div class="toggle-row">
+        <button class="toggle-btn active" id="tab-lookup" onclick="switchVehicleTab('lookup')">Look up car</button>
+        <button class="toggle-btn" id="tab-manual" onclick="switchVehicleTab('manual')">Enter MPG</button>
+      </div>
+
+      <div id="vehicle-lookup">
+        <div class="input-row">
+          <div class="form-group">
+            <label>Year</label>
+            <select id="v-year" onchange="loadMakes()">
+              <option value="">Year</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Make</label>
+            <select id="v-make" onchange="loadModels()" disabled>
+              <option value="">Make</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-row">
+          <div class="form-group">
+            <label>Model</label>
+            <select id="v-model" onchange="loadTrims()" disabled>
+              <option value="">Model</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Trim / Variant</label>
+            <select id="v-trim" disabled>
+              <option value="">Trim</option>
+            </select>
+          </div>
+        </div>
+        <div id="mpg-display" style="display:none;" class="form-group">
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;">
+            <span style="color:var(--text2);">Combined MPG: </span>
+            <span id="mpg-value" style="font-family:'DM Mono',monospace;color:var(--accent);font-weight:500;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="vehicle-manual" style="display:none;">
+        <div class="form-group">
+          <label>Your car's MPG (combined)</label>
+          <input type="number" id="manual-mpg" placeholder="e.g. 28" min="1" max="200" step="0.5"/>
+        </div>
+        <div class="form-group">
+          <label>Tank size (gallons) <span style="color:var(--muted);font-size:11px;">— optional</span></label>
+          <input type="number" id="manual-tank" placeholder="e.g. 14" min="1" max="100" step="0.5"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- FUEL TYPE -->
+    <div class="card">
+      <div class="section-label">Fuel Type</div>
+      <div class="toggle-row" style="margin-bottom:0;">
+        <button class="toggle-btn active" id="fuel-regular" onclick="setFuel('regular')">Regular</button>
+        <button class="toggle-btn" id="fuel-midgrade" onclick="setFuel('midgrade')">Mid-Grade</button>
+        <button class="toggle-btn" id="fuel-premium" onclick="setFuel('premium')">Premium</button>
+        <button class="toggle-btn" id="fuel-diesel" onclick="setFuel('diesel')">Diesel</button>
+      </div>
+    </div>
+
+    <!-- CALCULATE BUTTON -->
+    <button class="btn-primary" id="calc-btn" onclick="calculate()">Calculate Trip Cost →</button>
+
+    <!-- LOADER -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <span id="loader-text">Planning your route...</span>
+    </div>
+
+    <!-- ERROR -->
+    <div class="error-msg" id="error-msg"></div>
+
+    <!-- RESULTS -->
+    <div class="results" id="results">
+
+      <div class="stat-grid">
+        <div class="stat-box highlight">
+          <div class="stat-label">Estimated total cost</div>
+          <div class="stat-value" id="res-cost">—</div>
+          <div class="stat-sub" id="res-cost-range"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total distance</div>
+          <div class="stat-value normal" id="res-distance">—</div>
+          <div class="stat-sub" id="res-duration"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Gallons needed</div>
+          <div class="stat-value normal" id="res-gallons">—</div>
+          <div class="stat-sub" id="res-stops"></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Avg. gas price</div>
+          <div class="stat-value normal" id="res-avgprice">—</div>
+          <div class="stat-sub">per gallon on route</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-label">By State</div>
+        <div class="breakdown-list" id="state-breakdown"></div>
+      </div>
+
+      <div class="gas-note" id="gas-note"></div>
+
+    </div>
+
+  </div>
+
+  <!-- MAP -->
+  <div class="map-pane">
+    <div id="map"></div>
+    <div class="map-overlay" id="map-overlay">
+      <div class="map-overlay-title">Trip Summary</div>
+      <div class="map-stat-row"><span>From</span><span id="ov-from">—</span></div>
+      <div class="map-stat-row"><span>To</span><span id="ov-to">—</span></div>
+      <div class="map-stat-row"><span>Distance</span><span id="ov-dist">—</span></div>
+      <div class="map-stat-row"><span>Est. Cost</span><span id="ov-cost">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// =============================================
+// CONFIG & STATE
+// =============================================
+const ORS_KEY = '5b3ce3597851110001cf6248a9b8f1b3d70f4ca9bd5fffac7f7bc51d'; // public demo key
+let map, routeLayer, originMarker, destMarker;
+let selectedFuel = 'regular';
+let vehicleMode = 'lookup';
+let currentMPG = null;
+let routeData = null;
+
+// State gas prices (EIA weekly averages, $/gallon, updated periodically)
+// Source: U.S. Energy Information Administration
+const STATE_GAS_PRICES = {
+  regular: {
+    TX: 3.04, CA: 4.52, NM: 3.15, AZ: 3.28, NV: 3.85, OK: 2.98, AR: 2.96,
+    LA: 2.99, MS: 2.97, AL: 2.98, TN: 3.01, KY: 3.05, GA: 3.02, FL: 3.18,
+    SC: 2.99, NC: 3.03, VA: 3.12, WV: 3.08, MD: 3.25, DE: 3.18, NJ: 3.22,
+    NY: 3.48, CT: 3.42, RI: 3.38, MA: 3.45, VT: 3.50, NH: 3.40, ME: 3.52,
+    PA: 3.32, OH: 3.12, IN: 3.14, IL: 3.58, MI: 3.28, WI: 3.22, MN: 3.28,
+    IA: 3.08, MO: 3.02, KS: 3.00, NE: 3.05, SD: 3.08, ND: 3.10, MT: 3.18,
+    WY: 3.12, CO: 3.38, UT: 3.42, ID: 3.48, OR: 3.88, WA: 4.12, AK: 4.22, HI: 4.85,
+    DEFAULT: 3.30
+  },
+  midgrade: {
+    TX: 3.32, CA: 4.85, NM: 3.45, AZ: 3.58, NV: 4.15, DEFAULT: 3.60
+  },
+  premium: {
+    TX: 3.62, CA: 5.15, NM: 3.75, AZ: 3.88, NV: 4.45, DEFAULT: 3.95
+  },
+  diesel: {
+    TX: 3.42, CA: 4.82, NM: 3.55, AZ: 3.65, NV: 4.02, DEFAULT: 3.72
+  }
+};
+
+// US state codes for reverse geocoding
+const STATE_NAMES = {
+  TX:'Texas',CA:'California',NM:'New Mexico',AZ:'Arizona',NV:'Nevada',
+  OK:'Oklahoma',AR:'Arkansas',LA:'Louisiana',MS:'Mississippi',AL:'Alabama',
+  TN:'Tennessee',KY:'Kentucky',GA:'Georgia',FL:'Florida',SC:'South Carolina',
+  NC:'North Carolina',VA:'Virginia',WV:'West Virginia',MD:'Maryland',DE:'Delaware',
+  NJ:'New Jersey',NY:'New York',CT:'Connecticut',RI:'Rhode Island',MA:'Massachusetts',
+  VT:'Vermont',NH:'New Hampshire',ME:'Maine',PA:'Pennsylvania',OH:'Ohio',IN:'Indiana',
+  IL:'Illinois',MI:'Michigan',WI:'Wisconsin',MN:'Minnesota',IA:'Iowa',MO:'Missouri',
+  KS:'Kansas',NE:'Nebraska',SD:'South Dakota',ND:'North Dakota',MT:'Montana',
+  WY:'Wyoming',CO:'Colorado',UT:'Utah',ID:'Idaho',OR:'Oregon',WA:'Washington',
+  AK:'Alaska',HI:'Hawaii'
+};
+
+// =============================================
+// MAP INIT
+// =============================================
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([37.5, -96], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    subdomains: 'abcd', maxZoom: 19
+  }).addTo(map);
+}
+initMap();
+
+// =============================================
+// VEHICLE YEAR INIT
+// =============================================
+function initYears() {
+  const sel = document.getElementById('v-year');
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear + 1; y >= 1990; y--) {
+    sel.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+}
+initYears();
+
+// =============================================
+// VEHICLE TAB SWITCH
+// =============================================
+function switchVehicleTab(tab) {
+  vehicleMode = tab;
+  document.getElementById('vehicle-lookup').style.display = tab === 'lookup' ? 'block' : 'none';
+  document.getElementById('vehicle-manual').style.display = tab === 'manual' ? 'block' : 'none';
+  document.getElementById('tab-lookup').className = 'toggle-btn' + (tab === 'lookup' ? ' active' : '');
+  document.getElementById('tab-manual').className = 'toggle-btn' + (tab === 'manual' ? ' active' : '');
+  if (tab === 'manual') currentMPG = null;
+}
+
+// =============================================
+// FUEL TYPE
+// =============================================
+function setFuel(type) {
+  selectedFuel = type;
+  ['regular','midgrade','premium','diesel'].forEach(f => {
+    document.getElementById('fuel-'+f).className = 'toggle-btn' + (f === type ? ' active' : '');
+  });
+}
+
+// =============================================
+// NHTSA API — VEHICLE LOOKUP
+// =============================================
+async function loadMakes() {
+  const year = document.getElementById('v-year').value;
+  if (!year) return;
+  const makeEl = document.getElementById('v-make');
+  const modelEl = document.getElementById('v-model');
+  const trimEl = document.getElementById('v-trim');
+  makeEl.disabled = true; makeEl.innerHTML = '<option>Loading...</option>';
+  modelEl.disabled = true; modelEl.innerHTML = '<option value="">Model</option>';
+  trimEl.disabled = true; trimEl.innerHTML = '<option value="">Trim</option>';
+  document.getElementById('mpg-display').style.display = 'none';
+  currentMPG = null;
+  try {
+    const r = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json`);
+    const d = await r.json();
+    const makes = d.Results.sort((a,b) => a.MakeName.localeCompare(b.MakeName));
+    makeEl.innerHTML = '<option value="">Make</option>' + makes.map(m => `<option value="${m.MakeId}">${m.MakeName}</option>`).join('');
+    makeEl.disabled = false;
+  } catch(e) {
+    makeEl.innerHTML = '<option>Error loading</option>';
+  }
+}
+
+async function loadModels() {
+  const year = document.getElementById('v-year').value;
+  const makeId = document.getElementById('v-make').value;
+  const makeName = document.getElementById('v-make').selectedOptions[0]?.text;
+  if (!year || !makeId) return;
+  const modelEl = document.getElementById('v-model');
+  const trimEl = document.getElementById('v-trim');
+  modelEl.disabled = true; modelEl.innerHTML = '<option>Loading...</option>';
+  trimEl.disabled = true; trimEl.innerHTML = '<option value="">Trim</option>';
+  document.getElementById('mpg-display').style.display = 'none';
+  currentMPG = null;
+  try {
+    const r = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeIdYear/makeId/${makeId}/modelyear/${year}?format=json`);
+    const d = await r.json();
+    const models = d.Results.sort((a,b) => a.Model_Name.localeCompare(b.Model_Name));
+    if (models.length === 0) {
+      modelEl.innerHTML = '<option value="">No models found</option>';
+    } else {
+      modelEl.innerHTML = '<option value="">Model</option>' + models.map(m => `<option value="${encodeURIComponent(m.Model_Name)}">${m.Model_Name}</option>`).join('');
+      modelEl.disabled = false;
+    }
+  } catch(e) {
+    modelEl.innerHTML = '<option>Error loading</option>';
+  }
+}
+
+async function loadTrims() {
+  const year = document.getElementById('v-year').value;
+  const makeName = document.getElementById('v-make').selectedOptions[0]?.text;
+  const modelName = decodeURIComponent(document.getElementById('v-model').value);
+  if (!year || !makeName || !modelName) return;
+  const trimEl = document.getElementById('v-trim');
+  trimEl.disabled = true; trimEl.innerHTML = '<option>Loading...</option>';
+  document.getElementById('mpg-display').style.display = 'none';
+  currentMPG = null;
+
+  // Use EPA FuelEconomy.gov API for MPG data
+  try {
+    const url = `https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=${year}&make=${encodeURIComponent(makeName)}&model=${encodeURIComponent(modelName)}`;
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
+    const d = await r.json();
+    const items = Array.isArray(d.menuItem) ? d.menuItem : (d.menuItem ? [d.menuItem] : []);
+    if (items.length === 0) {
+      trimEl.innerHTML = '<option value="">No trims found</option>';
+    } else {
+      trimEl.innerHTML = '<option value="">Select trim</option>' + items.map(t =>
+        `<option value="${t.value}">${t.text}</option>`
+      ).join('');
+      trimEl.disabled = false;
+      trimEl.onchange = loadMPG;
+    }
+  } catch(e) {
+    // Fallback: estimate MPG
+    trimEl.innerHTML = '<option value="fallback">Standard</option>';
+    trimEl.disabled = false;
+    currentMPG = estimateMPG(makeName, modelName);
+    showMPG(currentMPG);
+  }
+}
+
+async function loadMPG() {
+  const vehicleId = document.getElementById('v-trim').value;
+  if (!vehicleId || vehicleId === 'fallback') return;
+  try {
+    const r = await fetch(`https://www.fueleconomy.gov/ws/rest/vehicle/${vehicleId}`, {
+      headers: { Accept: 'application/json' }
+    });
+    const d = await r.json();
+    const combined = parseFloat(d.comb08) || parseFloat(d.combA08) || null;
+    if (combined) {
+      currentMPG = combined;
+      showMPG(combined);
+    }
+  } catch(e) {}
+}
+
+function showMPG(mpg) {
+  document.getElementById('mpg-value').textContent = mpg + ' mpg';
+  document.getElementById('mpg-display').style.display = 'block';
+}
+
+function estimateMPG(make, model) {
+  const name = (make + ' ' + model).toLowerCase();
+  if (name.includes('prius') || name.includes('hybrid')) return 52;
+  if (name.includes('truck') || name.includes('f-150') || name.includes('silverado') || name.includes('ram 1500')) return 20;
+  if (name.includes('suv') || name.includes('tahoe') || name.includes('suburban') || name.includes('expedition')) return 18;
+  if (name.includes('tesla') || name.includes('electric') || name.includes('ev6') || name.includes('ioniq')) return 100;
+  if (name.includes('corolla') || name.includes('civic') || name.includes('camry') || name.includes('accord')) return 32;
+  return 28; // average car
+}
+
+// =============================================
+// GEOCODING (Nominatim)
+// =============================================
+async function geocode(address) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=us`;
+  const r = await fetch(url, { headers: { 'User-Agent': 'FuelRoute/1.0' } });
+  const d = await r.json();
+  if (!d.length) throw new Error(`Could not find location: "${address}"`);
+  return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), name: d[0].display_name };
+}
+
+async function geocodeSuggest(query, listId) {
+  if (query.length < 3) { hideSuggestions(listId); return; }
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=us&addressdetails=1`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'FuelRoute/1.0' } });
+    const d = await r.json();
+    showSuggestions(d, listId);
+  } catch(e) {}
+}
+
+function showSuggestions(results, listId) {
+  const list = document.getElementById(listId);
+  if (!results.length) { list.classList.remove('show'); return; }
+  list.innerHTML = results.map((r, i) => {
+    const short = formatAddress(r);
+    return `<div class="suggestion-item" onclick="selectSuggestion('${listId}', '${short.replace(/'/g,"\\'")}')"> ${short}</div>`;
+  }).join('');
+  list.classList.add('show');
+}
+
+function formatAddress(r) {
+  const a = r.address || {};
+  const parts = [];
+  if (a.city || a.town || a.village) parts.push(a.city || a.town || a.village);
+  if (a.state) parts.push(a.state);
+  if (!parts.length) return r.display_name.split(',').slice(0,2).join(',').trim();
+  return parts.join(', ');
+}
+
+function selectSuggestion(listId, value) {
+  const inputId = listId === 'origin-suggestions' ? 'origin' : 'destination';
+  document.getElementById(inputId).value = value;
+  hideSuggestions(listId);
+}
+
+function hideSuggestions(listId) {
+  document.getElementById(listId).classList.remove('show');
+}
+
+// Autocomplete listeners
+let originTimer, destTimer;
+document.getElementById('origin').addEventListener('input', e => {
+  clearTimeout(originTimer);
+  originTimer = setTimeout(() => geocodeSuggest(e.target.value, 'origin-suggestions'), 400);
+});
+document.getElementById('destination').addEventListener('input', e => {
+  clearTimeout(destTimer);
+  destTimer = setTimeout(() => geocodeSuggest(e.target.value, 'dest-suggestions'), 400);
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrapper')) {
+    hideSuggestions('origin-suggestions');
+    hideSuggestions('dest-suggestions');
+  }
+});
+
+// =============================================
+// ROUTING (OpenRouteService)
+// =============================================
+async function getRoute(originCoord, destCoord) {
+  const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${ORS_KEY}&start=${originCoord.lon},${originCoord.lat}&end=${destCoord.lon},${destCoord.lat}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('Routing service unavailable. Please try again.');
+  const d = await r.json();
+  if (!d.features || !d.features.length) throw new Error('No route found between these locations.');
+  return d.features[0];
+}
+
+// =============================================
+// STATE DETECTION FROM COORDINATES
+// =============================================
+async function getStateForCoord(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'FuelRoute/1.0' } });
+    const d = await r.json();
+    return d.address?.state_code?.toUpperCase() || d.address?.['ISO3166-2-lvl4']?.split('-')[1] || null;
+  } catch { return null; }
+}
+
+// Sample coordinates along route to detect states
+async function detectStatesOnRoute(coordinates) {
+  const total = coordinates.length;
+  // Sample ~20 evenly spaced points
+  const step = Math.max(1, Math.floor(total / 20));
+  const samples = [];
+  for (let i = 0; i < total; i += step) samples.push(coordinates[i]);
+  if (samples[samples.length-1] !== coordinates[total-1]) samples.push(coordinates[total-1]);
+
+  const stateSequence = [];
+  for (const coord of samples) {
+    const code = await getStateForCoord(coord[1], coord[0]);
+    if (code && (stateSequence.length === 0 || stateSequence[stateSequence.length-1].code !== code)) {
+      stateSequence.push({ code, name: STATE_NAMES[code] || code });
+    }
+  }
+  return stateSequence;
+}
+
+// =============================================
+// MAIN CALCULATE FUNCTION
+// =============================================
+async function calculate() {
+  const originText = document.getElementById('origin').value.trim();
+  const destText = document.getElementById('destination').value.trim();
+  if (!originText || !destText) { showError('Please enter both origin and destination.'); return; }
+
+  // Get MPG
+  let mpg = currentMPG;
+  if (vehicleMode === 'manual') {
+    mpg = parseFloat(document.getElementById('manual-mpg').value);
+    if (!mpg || mpg <= 0) { showError('Please enter a valid MPG value.'); return; }
+  }
+  if (!mpg) { showError('Please select a vehicle or enter MPG manually.'); return; }
+
+  clearError();
+  showLoader('Geocoding locations...');
+  document.getElementById('results').classList.remove('show');
+  clearMapLayers();
+
+  try {
+    // 1. Geocode
+    setLoaderText('Finding your locations...');
+    const [originCoord, destCoord] = await Promise.all([geocode(originText), geocode(destText)]);
+
+    // 2. Get route
+    setLoaderText('Calculating best route...');
+    const feature = await getRoute(originCoord, destCoord);
+    routeData = feature;
+    const props = feature.properties.summary;
+    const distanceKm = props.distance / 1000;
+    const distanceMiles = distanceKm * 0.621371;
+    const durationMin = props.duration / 60;
+    const coordinates = feature.geometry.coordinates;
+
+    // 3. Detect states
+    setLoaderText('Detecting states along route...');
+    const states = await detectStatesOnRoute(coordinates);
+
+    // 4. Draw map
+    drawRoute(feature, originCoord, destCoord, originText, destText);
+
+    // 5. Calculate costs
+    const totalGallons = distanceMiles / mpg;
+    const stateResults = calculateStateCosts(states, distanceMiles, totalGallons);
+    const totalCost = stateResults.reduce((s, x) => s + x.cost, 0);
+    const avgPrice = totalCost / totalGallons;
+
+    // 6. Render results
+    renderResults({
+      distanceMiles, durationMin, totalGallons, totalCost, avgPrice,
+      states: stateResults, mpg, originText, destText
+    });
+
+    hideLoader();
+
+  } catch(e) {
+    hideLoader();
+    showError(e.message || 'Something went wrong. Please try again.');
+  }
+}
+
+function calculateStateCosts(states, totalMiles, totalGallons) {
+  const prices = STATE_GAS_PRICES[selectedFuel];
+  const n = states.length;
+  if (n === 0) return [];
+  const milesPerState = totalMiles / n;
+  return states.map(s => {
+    const price = prices[s.code] || prices['DEFAULT'];
+    const gallons = milesPerState / (totalGallons > 0 ? (totalMiles / totalGallons) : 28);
+    const stateMiles = milesPerState;
+    const stateGallons = stateMiles / (totalMiles / totalGallons);
+    const cost = stateGallons * price;
+    return { ...s, miles: stateMiles, gallons: stateGallons, pricePerGallon: price, cost };
+  });
+}
+
+// =============================================
+// MAP DRAWING
+// =============================================
+function clearMapLayers() {
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
+  if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+}
+
+function createMarkerIcon(color, label) {
+  return L.divIcon({
+    html: `<div style="background:${color};color:#0c0f0a;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;padding:5px 8px;border-radius:6px;white-space:nowrap;border:2px solid #0c0f0a;box-shadow:0 2px 8px rgba(0,0,0,0.5)">${label}</div>`,
+    className: '', iconAnchor: [0, 10]
+  });
+}
+
+function drawRoute(feature, origin, dest, originText, destText) {
+  const latlngs = feature.geometry.coordinates.map(c => [c[1], c[0]]);
+  routeLayer = L.polyline(latlngs, {
+    color: '#b4d264', weight: 4, opacity: 0.85,
+    dashArray: null
+  }).addTo(map);
+  originMarker = L.marker([origin.lat, origin.lon], { icon: createMarkerIcon('#b4d264', originText.split(',')[0]) }).addTo(map);
+  destMarker = L.marker([dest.lat, dest.lon], { icon: createMarkerIcon('#e87040', destText.split(',')[0]) }).addTo(map);
+  map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+}
+
+// =============================================
+// RESULTS RENDERING
+// =============================================
+function renderResults({ distanceMiles, durationMin, totalGallons, totalCost, avgPrice, states, mpg, originText, destText }) {
+  const hours = Math.floor(durationMin / 60);
+  const mins = Math.round(durationMin % 60);
+  const durationStr = hours > 0 ? `~${hours}h ${mins}m drive` : `~${mins}m drive`;
+  const tankSize = vehicleMode === 'manual' ? parseFloat(document.getElementById('manual-tank').value) || (totalGallons / 2) : null;
+  const gasTankStops = tankSize ? Math.ceil(totalGallons / tankSize) - 1 : Math.ceil(distanceMiles / (mpg * 12));
+
+  document.getElementById('res-cost').textContent = '$' + totalCost.toFixed(2);
+  document.getElementById('res-cost-range').textContent = `$${(totalCost * 0.92).toFixed(0)} – $${(totalCost * 1.08).toFixed(0)} range`;
+  document.getElementById('res-distance').textContent = Math.round(distanceMiles) + ' mi';
+  document.getElementById('res-duration').textContent = durationStr;
+  document.getElementById('res-gallons').textContent = totalGallons.toFixed(1) + ' gal';
+  document.getElementById('res-stops').textContent = gasTankStops > 0 ? `~${gasTankStops} gas stop${gasTankStops > 1 ? 's' : ''}` : 'No stops needed';
+  document.getElementById('res-avgprice').textContent = '$' + avgPrice.toFixed(3);
+
+  // State breakdown
+  const maxCost = Math.max(...states.map(s => s.cost));
+  const breakdown = document.getElementById('state-breakdown');
+  breakdown.innerHTML = states.map(s => `
+    <div class="breakdown-item">
+      <div class="state-flag">${s.code}</div>
+      <div class="state-info">
+        <div class="state-name">${s.name || s.code}</div>
+        <div class="state-details">${Math.round(s.miles)} mi · ${s.gallons.toFixed(1)} gal · $${s.pricePerGallon.toFixed(3)}/gal</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round((s.cost/maxCost)*100)}%"></div></div>
+      </div>
+      <div class="state-cost">$${s.cost.toFixed(2)}</div>
+    </div>
+  `).join('');
+
+  // Gas note
+  const dataDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  document.getElementById('gas-note').textContent =
+    `Gas prices are state averages from EIA data (updated weekly). Actual prices vary by station. The ±8% range accounts for price variation. Prices shown for ${selectedFuel} gasoline.`;
+
+  // Map overlay
+  document.getElementById('ov-from').textContent = originText.split(',')[0];
+  document.getElementById('ov-to').textContent = destText.split(',')[0];
+  document.getElementById('ov-dist').textContent = Math.round(distanceMiles) + ' mi';
+  document.getElementById('ov-cost').textContent = '$' + totalCost.toFixed(2);
+  document.getElementById('map-overlay').classList.add('show');
+
+  document.getElementById('results').classList.add('show');
+}
+
+// =============================================
+// UI HELPERS
+// =============================================
+function showLoader(text) {
+  document.getElementById('loader-text').textContent = text;
+  document.getElementById('loader').classList.add('show');
+  document.getElementById('calc-btn').disabled = true;
+}
+function setLoaderText(t) { document.getElementById('loader-text').textContent = t; }
+function hideLoader() {
+  document.getElementById('loader').classList.remove('show');
+  document.getElementById('calc-btn').disabled = false;
+}
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearError() { document.getElementById('error-msg').classList.remove('show'); }
+</script>
+</body>
+</html>
