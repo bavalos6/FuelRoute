@@ -736,6 +736,63 @@
     //     TX: 3.42, CA: 4.82, NM: 3.55, AZ: 3.65, NV: 4.02, DEFAULT: 3.72
     //   }
     // };
+    const STATE_BOUNDS = [
+      // West
+      { code: 'WA', xMin: -124.76, xMax: -116.91, yMin: 45.54, yMax: 49.00 },
+      { code: 'OR', xMin: -124.57, xMax: -116.46, yMin: 41.99, yMax: 46.23 },
+      { code: 'CA', xMin: -124.48, xMax: -114.13, yMin: 32.53, yMax: 42.01 },
+      { code: 'NV', xMin: -120.00, xMax: -114.04, yMin: 35.00, yMax: 42.00 },
+      { code: 'ID', xMin: -117.24, xMax: -111.04, yMin: 41.99, yMax: 49.00 },
+      { code: 'UT', xMin: -114.05, xMax: -109.04, yMin: 37.00, yMax: 41.00 },
+      { code: 'AZ', xMin: -114.82, xMax: -109.04, yMin: 31.33, yMax: 37.00 },
+      { code: 'MT', xMin: -116.05, xMax: -104.04, yMin: 44.35, yMax: 49.00 },
+      { code: 'WY', xMin: -111.05, xMax: -104.05, yMin: 41.00, yMax: 45.00 },
+      { code: 'CO', xMin: -109.06, xMax: -102.04, yMin: 37.00, yMax: 41.00 },
+      { code: 'NM', xMin: -109.05, xMax: -103.00, yMin: 31.33, yMax: 37.00 },
+
+      // Midwest & Plains
+      { code: 'ND', xMin: -104.05, xMax: -96.55, yMin: 45.93, yMax: 49.00 },
+      { code: 'SD', xMin: -104.06, xMax: -96.44, yMin: 42.95, yMax: 45.94 },
+      { code: 'NE', xMin: -104.05, xMax: -95.31, yMin: 40.00, yMax: 43.00 },
+      { code: 'KS', xMin: -102.05, xMax: -94.59, yMin: 37.00, yMax: 40.00 },
+      { code: 'OK', xMin: -103.00, xMax: -94.43, yMin: 33.62, yMax: 37.00 },
+      { code: 'TX', xMin: -106.65, xMax: -93.51, yMin: 25.84, yMax: 36.50 },
+      { code: 'MN', xMin: -97.24, xMax: -89.48, yMin: 43.50, yMax: 49.38 },
+      { code: 'IA', xMin: -96.64, xMax: -90.14, yMin: 40.38, yMax: 43.50 },
+      { code: 'MO', xMin: -95.77, xMax: -89.10, yMin: 35.99, yMax: 40.61 },
+      { code: 'AR', xMin: -94.62, xMax: -89.64, yMin: 33.00, yMax: 36.50 },
+      { code: 'LA', xMin: -94.04, xMax: -88.81, yMin: 28.93, yMax: 33.02 },
+      { code: 'WI', xMin: -92.89, xMax: -86.83, yMin: 42.49, yMax: 47.08 },
+      { code: 'IL', xMin: -91.51, xMax: -87.50, yMin: 36.97, yMax: 42.51 },
+      { code: 'MI', xMin: -90.42, xMax: -82.41, yMin: 41.70, yMax: 48.30 },
+      { code: 'IN', xMin: -88.09, xMax: -84.78, yMin: 37.77, yMax: 41.76 },
+      { code: 'OH', xMin: -84.82, xMax: -80.52, yMin: 38.40, yMax: 41.98 },
+
+      // South
+      { code: 'KY', xMin: -89.57, xMax: -81.96, yMin: 36.50, yMax: 39.15 },
+      { code: 'TN', xMin: -90.31, xMax: -81.65, yMin: 34.99, yMax: 36.68 },
+      { code: 'MS', xMin: -91.65, xMax: -88.10, yMin: 30.20, yMax: 35.00 },
+      { code: 'AL', xMin: -88.47, xMax: -84.89, yMin: 30.22, yMax: 35.00 },
+      { code: 'GA', xMin: -85.61, xMax: -80.84, yMin: 30.36, yMax: 35.00 },
+      { code: 'FL', xMin: -87.64, xMax: -80.03, yMin: 24.52, yMax: 31.00 },
+      { code: 'SC', xMin: -83.35, xMax: -78.55, yMin: 32.03, yMax: 35.22 },
+      { code: 'NC', xMin: -84.32, xMax: -75.46, yMin: 33.84, yMax: 36.59 },
+      { code: 'VA', xMin: -83.68, xMax: -75.24, yMin: 36.54, yMax: 39.47 },
+      { code: 'WV', xMin: -82.64, xMax: -77.72, yMin: 37.20, yMax: 40.64 },
+
+      // Northeast
+      { code: 'MD', xMin: -79.48, xMax: -75.05, yMin: 37.91, yMax: 39.72 },
+      { code: 'DE', xMin: -75.79, xMax: -75.05, yMin: 38.45, yMax: 39.84 },
+      { code: 'PA', xMin: -80.52, xMax: -74.69, yMin: 39.72, yMax: 42.27 },
+      { code: 'NJ', xMin: -75.56, xMax: -73.91, yMin: 38.93, yMax: 41.36 },
+      { code: 'NY', xMin: -79.76, xMax: -71.86, yMin: 40.50, yMax: 45.02 },
+      { code: 'CT', xMin: -73.73, xMax: -71.79, yMin: 40.99, yMax: 42.05 },
+      { code: 'RI', xMin: -71.89, xMax: -71.12, yMin: 41.15, yMax: 42.02 },
+      { code: 'MA', xMin: -73.51, xMax: -69.93, yMin: 41.24, yMax: 42.89 },
+      { code: 'VT', xMin: -73.44, xMax: -71.47, yMin: 42.73, yMax: 45.02 },
+      { code: 'NH', xMin: -72.56, xMax: -70.61, yMin: 42.70, yMax: 45.31 },
+      { code: 'ME', xMin: -71.08, xMax: -66.95, yMin: 43.06, yMax: 47.46 }
+    ];
 
     const STATE_NAMES = {
       AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
@@ -1050,31 +1107,37 @@
     // =============================================
     // STATE DETECTION FROM COORDINATES
     // =============================================
-    async function getStateForCoord(lat, lon) {
-      try {
-        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
-        const r = await fetch(url, { headers: { 'User-Agent': 'FuelRoute/1.0' } });
-        const d = await r.json();
-        return d.address?.state_code?.toUpperCase() || d.address?.['ISO3166-2-lvl4']?.split('-')[1] || null;
-      } catch { return null; }
+    function getStateByCoordinates(lon, lat) {
+      // Check which state bounding box the coordinate drops into
+      for (const zone of STATE_BOUNDS) {
+        if (lon >= zone.xMin && lon <= zone.xMax && lat >= zone.yMin && lat <= zone.yMax) {
+          return zone.code;
+        }
+      }
+      return null;
     }
 
     // Sample coordinates along route to detect states
-    async function detectStatesOnRoute(coordinates) {
-      const total = coordinates.length;
-      // Sample ~20 evenly spaced points
-      const step = Math.max(1, Math.floor(total / 20));
-      const samples = [];
-      for (let i = 0; i < total; i += step) samples.push(coordinates[i]);
-      if (samples[samples.length - 1] !== coordinates[total - 1]) samples.push(coordinates[total - 1]);
-
+    function detectStatesOnRoute(coordinates) {
       const stateSequence = [];
-      for (const coord of samples) {
-        const code = await getStateForCoord(coord[1], coord[0]);
+
+      // Sample through the route coordinates arrays
+      for (let i = 0; i < coordinates.length; i += Math.max(1, Math.floor(coordinates.length / 30))) {
+        const pt = coordinates[i]; // OSRM gives coordinates as [lon, lat]
+        const code = getStateByCoordinates(pt[0], pt[1]);
+
         if (code && (stateSequence.length === 0 || stateSequence[stateSequence.length - 1].code !== code)) {
           stateSequence.push({ code, name: STATE_NAMES[code] || code });
         }
       }
+
+      // Ensure we catch the destination state if skipped
+      const lastPt = coordinates[coordinates.length - 1];
+      const finalCode = getStateByCoordinates(lastPt[0], lastPt[1]);
+      if (finalCode && (!stateSequence.length || stateSequence[stateSequence.length - 1].code !== finalCode)) {
+        stateSequence.push({ code: finalCode, name: STATE_NAMES[finalCode] || finalCode });
+      }
+
       return stateSequence;
     }
 
@@ -1174,13 +1237,23 @@
     }
 
     function drawRoute(feature, origin, dest, originText, destText) {
+      // Ensure layers are wiped cleanly from the existing map instance first
+      clearMapLayers();
+
       const latlngs = feature.geometry.coordinates.map(c => [c[1], c[0]]);
+
       routeLayer = L.polyline(latlngs, {
-        color: '#b4d264', weight: 4, opacity: 0.85,
-        dashArray: null
+        color: '#b4d264', weight: 4, opacity: 0.85
       }).addTo(map);
-      originMarker = L.marker([origin.lat, origin.lon], { icon: createMarkerIcon('#b4d264', originText.split(',')[0]) }).addTo(map);
-      destMarker = L.marker([dest.lat, dest.lon], { icon: createMarkerIcon('#e87040', destText.split(',')[0]) }).addTo(map);
+
+      originMarker = L.marker([origin.lat, origin.lon], {
+        icon: createMarkerIcon('#b4d264', originText.split(',')[0])
+      }).addTo(map);
+
+      destMarker = L.marker([dest.lat, dest.lon], {
+        icon: createMarkerIcon('#e87040', destText.split(',')[0])
+      }).addTo(map);
+
       map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
     }
 
